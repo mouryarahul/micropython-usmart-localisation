@@ -1,4 +1,5 @@
 import math
+
 try:
     import ulab as np
     from uac_localisation.main.misc.utils import random_combinations
@@ -13,8 +14,26 @@ except ImportError:
 
 class TDOALocalization:
     def __init__(self, soundspeed, depth):
-        self.soundspeed = soundspeed
-        self.depth = depth
+        self._soundspeed = soundspeed
+        self._depth = depth
+
+    @property
+    def sound_speed(self):
+        return self._soundspeed
+
+    @sound_speed.setter
+    def sound_speed(self, soundspeed: float):
+        """ Set the sound speed """
+        self._soundspeed = soundspeed
+
+    @property
+    def sensor_depth(self):
+        return self._depth
+
+    @sensor_depth.setter
+    def sensor_depth(self, depth: float):
+        """ Set the sensor depth """
+        self._depth = depth
 
     @staticmethod
     def extract_tdoa_info(soundspeed, beacon_signals: list) -> list:
@@ -432,7 +451,7 @@ class TDOALocalization:
                     num_anchors += anchor.shape[0]
 
             init_soln = mean_anchor_location / num_anchors
-            init_soln[2] = self.depth
+            init_soln[2] = self._depth
 
             # Estimate location from selected subset of anchors using Gauss-Newton method
             sensor_location = TDOALocalization.tdoa_multilateration_from_multiple_segments_gauss_newton(anchor_locations, range_diffs, init_soln)
@@ -508,18 +527,20 @@ class TDOALocalization:
         return estimated_locations
 
     def estimate_location(self, beacon_signals: list) -> list:
-        loc_range_diff_info = self.extract_tdoa_info(self.soundspeed, beacon_signals)
+        loc_range_diff_info = self.extract_tdoa_info(self._soundspeed, beacon_signals)
 
         if loc_range_diff_info:
-            estimated_locations = self.perform_robust_multilateration(loc_range_diff_info, self.depth)
-            estimated_location = self.tdoa_multilateration_from_all_segments_gauss_newton(loc_range_diff_info, self.depth)
+            # estimated_locations = self.perform_robust_multilateration(loc_range_diff_info, self.depth)
+            # estimated_location = self.tdoa_multilateration_from_all_segments_gauss_newton(loc_range_diff_info, self.depth)
             robust_location = self.least_median_square_estimate(loc_range_diff_info, 120)
 
+            """
             for i in range(len(estimated_locations)):
                 print("Estimated Location from {}th segment = {}: ".format(i, estimated_locations[i]))
-
             print("\nJointly estimated Location = \t {}".format(estimated_location))
             print("\nRobust estimated location = \t {}".format(robust_location))
-            return estimated_locations
+            """
+            return robust_location
         else:
             print("No sufficient info to estimate location!")
+            return []

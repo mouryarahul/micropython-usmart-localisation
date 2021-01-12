@@ -5,12 +5,15 @@ try:
     from uac_localisation.main.misc.datetime import datetime, timedelta
     from uac_localisation.main.utm.conversion import to_latlon, from_latlon
     from uac_localisation.main.misc.utils import distance
+    from uac_modem.main.unm3driver import MessagePacket
     from uac_localisation.main.LocalizationProcess import LocalizationProcess
 except ImportError:
     from datetime import datetime, timedelta
     from main.utm.conversion import to_latlon, from_latlon
     from main.misc.utils import distance
+    from main.unm3driver import MessagePacket
     from main.LocalizationProcess import LocalizationProcess
+
 
 # Anchor locations in Lat/Lon and anchor_depth (m)
 anchor_depth = 1.0  # m
@@ -86,7 +89,7 @@ while sg6:
     x, y, zone, zone_letter = from_latlon(anchor[0], anchor[1])
     SG6.append([x, y, anchor_depth, zone, zone_letter])
 
-Beacon_Segments = [SG1, SG2, SG3, SG4, SG5, SG6]
+Beacon_Segments = [SG1]  #, SG2, SG3, SG4, SG5, SG6]
 
 
 # Sensor locations in Lat/Lon and anchor_depth(m)
@@ -113,23 +116,57 @@ x, y, zone, zone_letter = from_latlon(sensor_loc[0], sensor_loc[1])
 sensor_loc = [x, y, sensor_depth, zone, zone_letter]
 
 # Sound speed
-sound_speed = 1530  # m/s
-
-
+sound_speed = 1530.0  # m/s
+fluid_density = 1029.0  # kg/m^3
 # Create an instance of LocalizationProcess
-sensor = LocalizationProcess(sound_speed, sensor_depth)
+sensor = LocalizationProcess()
+sensor.sensor_depth = 100.0
+
 
 # Generate Beacon Signals
+timestamp = datetime.now()
+data_packet = MessagePacket()  # An instance of MessagePacket
+# Broadcast signals to update the Environment Parameters for Location Estimator
+msg = b'ULMP' + b'S' + struct.pack('f', sound_speed)
+data_packet.source_address = 0
+data_packet.destination_address = 255
+data_packet.packet_type = MessagePacket.PACKETTYPE_BROADCAST
+data_packet.packet_payload = msg
+# data_packet.timetuple = timetuple
+data_packet.timestamp = (timestamp.year, timestamp.month, timestamp.day, timestamp.hour,
+                         timestamp.minute, timestamp.second, timestamp.microsecond)
+sensor.handle_incoming_data_packet(data_packet)
+
+
+timestamp = datetime.now()
+data_packet = MessagePacket()  # An instance of MessagePacket
+msg = b'ULMP' + b'D' + struct.pack('f', fluid_density)
+data_packet.source_address = 0
+data_packet.destination_address = 255
+data_packet.packet_type = MessagePacket.PACKETTYPE_BROADCAST
+data_packet.packet_payload = msg
+# data_packet.timetuple = timetuple
+data_packet.timestamp = (timestamp.year, timestamp.month, timestamp.day, timestamp.hour,
+                         timestamp.minute, timestamp.second, timestamp.microsecond)
+sensor.handle_incoming_data_packet(data_packet)
+
 t0 = datetime.now()  # Start of Beacon Cycle
 for i in range(len(Beacon_Segments)):
     if i == 0:
         # Start of Beacon Cycle
+        data_packet = MessagePacket()
         msg = b'ULMS'
         # Time taken by signal to reach Sensor
         master_to_sensor = distance(Beacon_Segments[i][0][0:3], sensor_loc[0:3])/sound_speed  # in seconds
         timestamp = t0 + timedelta(seconds=master_to_sensor)
-        sensor.handle_incoming_data_packet(msg, timestamp)
-        #print("Msg:{} \t\t\t\t\t\t\t\t\t\t Timestamp: {}".format(msg[0:4], timestamp))
+        data_packet.source_address = 0
+        data_packet.destination_address = 255
+        data_packet.packet_type = MessagePacket.PACKETTYPE_BROADCAST
+        data_packet.packet_payload = msg
+        data_packet.timestamp = (timestamp.year, timestamp.month, timestamp.day, timestamp.hour,
+                                 timestamp.minute, timestamp.second, timestamp.microsecond)
+        # data_packet.timestamp = (seconds, millis, micros)
+        sensor.handle_incoming_data_packet(data_packet)
 
     # Generate remaining Beacon Signals
     for j in range(0, len(Beacon_Segments[i])):
@@ -146,7 +183,6 @@ for i in range(len(Beacon_Segments)):
             m = len(Beacon_Segments[i])
             n = i
             msg = b'ULMB' + struct.pack('B', n) + struct.pack('B', m) + b'L' + lat + lon + anchor_depth
-            #print("\nMsg:{} \t\t\t\t\t\t\t\t\t\t Timestamp: {}".format(msg[0:4], timestamp))
 
         else:  # Continuation of Beacon Segment
             master_to_anchor = distance(Beacon_Segments[i][0][0:3], Beacon_Segments[i][j][0:3]) / sound_speed  # in seconds
@@ -156,15 +192,33 @@ for i in range(len(Beacon_Segments)):
             timestamp = t0 + timedelta(seconds=total_time_duration)
             n = i
             msg = b'ULAB' + struct.pack('B', n) + b'L' + lat + lon + anchor_depth + b'D' + struct.pack('f', time_delay)
-            #print("Msg:{} \t\t\t\t\t\t\t\t\t\t Timestamp: {}".format(msg[0:4], timestamp))
 
-        sensor.handle_incoming_data_packet(msg, timestamp)
+        data_packet = MessagePacket()  # An instance of MessagePacket
+        data_packet.source_address = 0
+        data_packet.destination_address = 255
+        data_packet.packet_type = MessagePacket.PACKETTYPE_BROADCAST
+        data_packet.packet_payload = msg
+        data_packet.timestamp = (timestamp.year, timestamp.month, timestamp.day, timestamp.hour,
+                                 timestamp.minute, timestamp.second, timestamp.microsecond)
+        # data_packet.timestamp = (seconds, millis, micros)
+        sensor.handle_incoming_data_packet(data_packet)
 
 # Beacon Cycle Ended
 msg = b'ULME'
 timestamp = t0 + timedelta(seconds=random.random())
-#print("Msg:{} \t\t\t\t\t\t\t\t\t\t Timestamp: {}\n\n".format(msg[0:4], timestamp))
-sensor.handle_incoming_data_packet(msg, timestamp)
+#print("Msg:{} \t\t\t\t\t\t\t\t\t\t Timestamp: {}\n\n".format(msg[0:4], timetuple))
+data_packet = MessagePacket()  # An instance of MessagePacket
+data_packet.source_address = 0
+data_packet.destination_address = 255
+data_packet.packet_type = MessagePacket.PACKETTYPE_BROADCAST
+data_packet.packet_payload = msg
+# data_packet.timetuple = timetuple
+data_packet.timestamp = (timestamp.year, timestamp.month, timestamp.day, timestamp.hour,
+                         timestamp.minute, timestamp.second, timestamp.microsecond)
+# data_packet.timetuple = (seconds, millis, micros)
+sensor.handle_incoming_data_packet(data_packet)
+
+print("Sensor's Current Locations: ", sensor.current_location)
 
 
 

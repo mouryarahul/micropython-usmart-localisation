@@ -686,7 +686,7 @@ class date:
 
     @classmethod
     def fromtimestamp(cls, t):
-        "Construct a date from a POSIX timestamp (like time.time())."
+        "Construct a date from a POSIX timetuple (like time.time())."
         y, m, d, hh, mm, ss, weekday, jday = _time.localtime(t)
         return cls(y, m, d)
 
@@ -1149,7 +1149,7 @@ class datetime(date):
 
     @classmethod
     def _fromtimestamp(cls, t):
-        """Construct a datetime from a POSIX timestamp (like time.time()).
+        """Construct a datetime from a POSIX timetuple (like time.time()).
         """
 #        frac, t = _math.modf(t)
 #        us = round(frac * 1e6)
@@ -1167,7 +1167,7 @@ class datetime(date):
 
     @classmethod
     def fromtimestamp(cls, t):
-        """Construct a datetime from a POSIX timestamp (like time.time()).
+        """Construct a datetime from a POSIX timetuple (like time.time()).
         """
         result = cls._fromtimestamp(t)
         return result
@@ -1199,7 +1199,7 @@ class datetime(date):
                                   self.hour, self.minute, self.second)
 
     def timestamp(self):
-        "Return POSIX timestamp as float"
+        "Return POSIX timetuple as float"
         return _time.mktime((self.year, self.month, self.day,
                              self.hour, self.minute, self.second,
                              -1, -1, -1)) + self.microsecond / 1e6
