@@ -89,7 +89,7 @@ while sg6:
     x, y, zone, zone_letter = from_latlon(anchor[0], anchor[1])
     SG6.append([x, y, anchor_depth, zone, zone_letter])
 
-Beacon_Segments = [SG1]  #, SG2, SG3, SG4, SG5, SG6]
+Beacon_Segments = [SG1, SG2, SG3, SG4, SG5, SG6]
 
 
 # Sensor locations in Lat/Lon and anchor_depth(m)

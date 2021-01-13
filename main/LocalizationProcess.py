@@ -149,10 +149,10 @@ class LocalizationProcess:
     def update_environ_parameters(self, packet_payload: bytes) -> None:
         if packet_payload[4:5] == b'S':  # Sound Speed Info
             self._sound_speed = struct.unpack('f', packet_payload[5:])[0]
-            print("Updated Sound Speed.")
+            # print("Updated Sound Speed.")
         elif packet_payload[4:5] == b'D':  # Fluid Density Info
             self._fluid_density = struct.unpack('f', packet_payload[5:])[0]
-            print("Updated Fluid Density.")
+            # print("Updated Fluid Density.")
         else:
             pass
 
